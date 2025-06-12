@@ -8,24 +8,8 @@ chrome.action.onClicked.addListener(async (tab) => {
   const newState = !isActive;
   await chrome.storage.local.set({ [`tab_${tab.id}`]: newState });
   
-  // Update icon opacity based on state
-  const iconOpacity = newState ? 255 : 115; // Full opacity when ON, 45% when OFF
-  
-  try {
-    // Create gray-scaled version for inactive state
-    const iconData = {
-      "16": `icons/icon16.png`,
-      "48": `icons/icon48.png`, 
-      "128": `icons/icon128.png`
-    };
-    
-    chrome.action.setIcon({
-      tabId: tab.id,
-      path: iconData
-    });
-  } catch (e) {
-    console.log('Icon update failed:', e);
-  }
+  // Icon state will be managed by the default icon in manifest.json
+  // Dynamic icon changes removed to prevent fetch errors
   
   // Send message to content script
   try {
