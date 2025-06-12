@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpacePeek Test Page</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2196F3;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+        
+        .instructions {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 40px;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .instructions h3 {
+            margin-top: 0;
+            color: #2196F3;
+        }
+        
+        .instructions ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        
+        .test-area {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+        
+        .test-box {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 600;
+            box-shadow: 0 8px 25px rgba(33, 150, 243, 0.3);
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .test-box:hover {
+            transform: translateY(-5px);
+        }
+        
+        .test-box.small {
+            padding: 15px;
+            font-size: 14px;
+        }
+        
+        .test-box.large {
+            padding: 50px;
+            font-size: 18px;
+        }
+        
+        .test-box.green {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+        }
+        
+        .test-box.orange {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            box-shadow: 0 8px 25px rgba(255, 152, 0, 0.3);
+        }
+        
+        .test-box.purple {
+            background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+            box-shadow: 0 8px 25px rgba(156, 39, 176, 0.3);
+        }
+        
+        .spacing-demo {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 60px 0;
+            padding: 40px;
+            background: #f0f0f0;
+            border-radius: 12px;
+        }
+        
+        .demo-element {
+            width: 100px;
+            height: 100px;
+            background: #e91e63;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(233, 30, 99, 0.3);
+        }
+        
+        .demo-element.circle {
+            border-radius: 50%;
+            background: #00bcd4;
+            box-shadow: 0 4px 15px rgba(0, 188, 212, 0.3);
+        }
+        
+        .demo-element.small {
+            width: 60px;
+            height: 60px;
+            background: #ff5722;
+            box-shadow: 0 4px 15px rgba(255, 87, 34, 0.3);
+        }
+        
+        .overlapping-demo {
+            position: relative;
+            height: 200px;
+            margin: 40px 0;
+            background: #fafafa;
+            border-radius: 12px;
+            border: 2px dashed #ddd;
+        }
+        
+        .overlap-box {
+            position: absolute;
+            width: 120px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .overlap-box:nth-child(1) {
+            background: rgba(255, 87, 34, 0.9);
+            top: 20px;
+            left: 20px;
+        }
+        
+        .overlap-box:nth-child(2) {
+            background: rgba(76, 175, 80, 0.9);
+            top: 60px;
+            left: 80px;
+        }
+        
+        .overlap-box:nth-child(3) {
+            background: rgba(156, 39, 176, 0.9);
+            top: 100px;
+            left: 140px;
+        }
+        
+        .fixed-element {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            background: #ff4444;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 20px rgba(255, 68, 68, 0.4);
+            z-index: 1000;
+        }
+        
+        .section-title {
+            font-size: 1.5em;
+            color: #2196F3;
+            margin: 40px 0 20px 0;
+            text-align: center;
+        }
+        
+        .keyboard-hint {
+            background: #fff3e0;
+            border: 1px solid #ffcc02;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+            color: #e65100;
+            font-weight: 500;
+        }
+        
+        .keyboard-hint code {
+            background: #ff6f00;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 SpacePeek Test Page</h1>
+        <p class="subtitle">Test your Chrome extension here!</p>
+        
+        <div class="instructions">
+            <h3>How to Test SpacePeek:</h3>
+            <ol>
+                <li><strong>Click the SpacePeek extension icon</strong> in your Chrome toolbar to activate</li>
+                <li><strong>Click any two elements</strong> below to measure the distance between them</li>
+                <li><strong>Hold Alt/Option + hover</strong> over elements to see their dimensions</li>
+                <li><strong>Press ESC</strong> to clear measurements or wait 5 seconds for auto-clear</li>
+                <li><strong>Click the extension icon again</strong> to deactivate</li>
+            </ol>
+        </div>
+        
+        <div class="keyboard-hint">
+            💡 <strong>Pro Tip:</strong> Hold <code>Alt</code> (or <code>Option</code> on Mac) while hovering over any element to see its dimensions!
+        </div>
+        
+        <h2 class="section-title">Test Elements - Click Any Two!</h2>
+        
+        <div class="test-area">
+            <div class="test-box">
+                Standard Box<br>
+                <small>300×120 pixels</small>
+            </div>
+            <div class="test-box small green">
+                Small Box<br>
+                <small>Different Size</small>
+            </div>
+            <div class="test-box large orange">
+                Large Box<br>
+                <small>Extra Padding</small>
+            </div>
+            <div class="test-box purple">
+                Purple Box<br>
+                <small>Same as Standard</small>
+            </div>
+        </div>
+        
+        <h2 class="section-title">Spacing Demo</h2>
+        
+        <div class="spacing-demo">
+            <div class="demo-element">
+                Square<br>
+                100×100
+            </div>
+            <div class="demo-element circle">
+                Circle<br>
+                100×100
+            </div>
+            <div class="demo-element small">
+                Small<br>
+                60×60
+            </div>
+        </div>
+        
+        <h2 class="section-title">Overlapping Elements Test</h2>
+        <p style="text-align: center; color: #666; margin-bottom: 20px;">
+            Test measuring distance between overlapping elements (should show 0px)
+        </p>
+        
+        <div class="overlapping-demo">
+            <div class="overlap-box">Box A</div>
+            <div class="overlap-box">Box B</div>
+            <div class="overlap-box">Box C</div>
+        </div>
+        
+        <div style="margin-top: 60px; padding: 30px; background: #e8f5e8; border-radius: 12px; text-align: center;">
+            <h3 style="color: #2e7d32; margin-top: 0;">🎉 Testing Complete!</h3>
+            <p style="color: #2e7d32; margin-bottom: 0;">
+                Try measuring between different elements, test the Alt+hover feature, 
+                and see how the extension handles various layouts and positioning!
+            </p>
+        </div>
+    </div>
+    
+    <div class="fixed-element">
+        Fixed<br>Element
+    </div>
+</body>
+</html> 

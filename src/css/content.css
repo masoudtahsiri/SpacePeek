@@ -1,0 +1,185 @@
+/* Measurement styles */
+.peekspace-measurement-line {
+  position: fixed;
+  background: #2196F3;
+  height: 2px;
+  transform-origin: left center;
+  z-index: 2147483645;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+
+.peekspace-measurement-label {
+  position: fixed;
+  background: rgba(33, 150, 243, 0.95);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  z-index: 2147483646;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Element highlighting */
+.peekspace-highlight {
+  outline: 2px solid #2196F3 !important;
+  outline-offset: 2px !important;
+  background-color: rgba(33, 150, 243, 0.08) !important;
+  position: relative !important;
+}
+
+.peekspace-highlight::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border: 2px solid #2196F3;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 2147483644;
+}
+
+/* Cursor style when active */
+body.peekspace-active,
+body.peekspace-active * {
+  cursor: crosshair !important;
+}
+
+/* Override cursor for measurement elements */
+.peekspace-measurement *,
+.peekspace-measurement-line,
+.peekspace-measurement-label,
+.peekspace-dimension-tooltip,
+.peekspace-toast {
+  cursor: default !important;
+}
+
+/* Dimension tooltip */
+.peekspace-dimension-tooltip {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  z-index: 2147483647;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: none;
+}
+
+/* Toast notifications */
+.peekspace-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  z-index: 2147483647;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(-10px);
+}
+
+.peekspace-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.peekspace-toast.on {
+  background: linear-gradient(135deg, #2ecc71, #27ae60);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.peekspace-toast.off {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Prevent selection during measurement */
+body.peekspace-active {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+}
+
+/* Measurement container */
+.peekspace-measurement {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2147483645;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .peekspace-toast {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    text-align: center;
+    font-size: 14px;
+    padding: 10px 20px;
+  }
+  
+  .peekspace-measurement-label {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+  
+  .peekspace-dimension-tooltip {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .peekspace-measurement-line {
+    background: #000;
+    box-shadow: 0 0 0 2px #fff;
+  }
+  
+  .peekspace-measurement-label {
+    background: #000;
+    color: #fff;
+    border: 2px solid #fff;
+  }
+  
+  .peekspace-highlight {
+    outline-color: #000 !important;
+    background-color: rgba(0, 0, 0, 0.1) !important;
+  }
+}
+
+/* Dark mode optimizations */
+@media (prefers-color-scheme: dark) {
+  .peekspace-dimension-tooltip {
+    background: rgba(40, 40, 40, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+} 
