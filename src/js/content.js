@@ -523,24 +523,85 @@ async function captureMeasurementScreenshot() {
     ctx.fillText(`Elements: ${firstElement.tagName} → ${secondElement.tagName}`, canvas.width / 2, 50);
     ctx.fillText(`Captured: ${new Date().toLocaleString()}`, canvas.width / 2, 65);
     
-    // Download the canvas with a more descriptive filename
-    canvas.toBlob((blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `spacepeek-measurement-${distance}px-${Date.now()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+    // Try multiple download methods
+    const filename = `spacepeek-measurement-${distance}px-${Date.now()}.png`;
+    
+    // Method 1: Try canvas.toBlob with download
+    try {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          throw new Error('Failed to create blob');
+        }
+        
+        console.log('Blob created successfully, size:', blob.size);
+        
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        
+        // Trigger download
+        a.click();
+        
+        // Cleanup
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 100);
+        
+        console.log('Download triggered for:', filename);
+        showToast(`Screenshot saved: ${filename}`, 'success');
+        
+      }, 'image/png', 1.0);
+    } catch (error) {
+      console.error('Method 1 failed:', error);
       
-      // Show more informative toast
-      showToast(`Screenshot saved as: spacepeek-measurement-${distance}px-${Date.now()}.png`, 'success');
-      
-      // Also show in console for debugging
-      console.log('Screenshot saved with filename:', a.download);
-      console.log('Check your Downloads folder or browser download bar');
-    }, 'image/png');
+      // Method 2: Try data URL approach
+      try {
+        const dataUrl = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        
+        a.click();
+        
+        setTimeout(() => {
+          document.body.removeChild(a);
+        }, 100);
+        
+        console.log('Download triggered via data URL for:', filename);
+        showToast(`Screenshot saved: ${filename}`, 'success');
+        
+      } catch (error2) {
+        console.error('Method 2 failed:', error2);
+        
+        // Method 3: Open in new tab
+        try {
+          const dataUrl = canvas.toDataURL('image/png');
+          const newWindow = window.open();
+          newWindow.document.write(`
+            <html>
+              <head><title>SpacePeek Screenshot</title></head>
+              <body style="margin:0;padding:20px;background:#f0f0f0;">
+                <h3>Screenshot saved as: ${filename}</h3>
+                <p>Right-click the image below and select "Save image as..."</p>
+                <img src="${dataUrl}" style="border:1px solid #ccc;max-width:100%;" />
+              </body>
+            </html>
+          `);
+          
+          showToast('Screenshot opened in new tab - right-click to save', 'success');
+          
+        } catch (error3) {
+          console.error('All download methods failed:', error3);
+          showToast('Screenshot failed - try browser screenshot tools', 'error');
+        }
+      }
+    }
     
   } catch (error) {
     console.error('Screenshot capture failed:', error);
