@@ -526,11 +526,15 @@ async function captureMeasurementScreenshot() {
         `;
         link.onclick = () => {
           setTimeout(() => {
-            document.body.removeChild(link);
+            if (document.body.contains(link)) {
+              document.body.removeChild(link);
+            }
           }, 1000);
         };
         document.body.appendChild(link);
-        showToast('Screenshot ready! Click the blue download button', 'success');
+        // Automatically trigger download
+        link.click();
+        showToast('Screenshot downloaded! (Blue button is a backup)', 'success');
       };
       img.onerror = function() {
         showToast('Screenshot failed: Could not load image', 'error');
