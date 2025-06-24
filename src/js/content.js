@@ -1,15 +1,53 @@
 // Load html2canvas library for screenshot functionality
 function loadHtml2Canvas() {
   return new Promise((resolve, reject) => {
-    if (window.html2canvas) {
+    if (window.html2canvas && typeof window.html2canvas === 'function') {
       resolve(window.html2canvas);
       return;
     }
     
+    // Try local file first
     const script = document.createElement('script');
     script.src = chrome.runtime.getURL('js/html2canvas.min.js');
-    script.onload = () => resolve(window.html2canvas);
-    script.onerror = reject;
+    
+    script.onload = () => {
+      // Wait a bit for the script to initialize
+      setTimeout(() => {
+        if (window.html2canvas && typeof window.html2canvas === 'function') {
+          resolve(window.html2canvas);
+        } else {
+          // Fallback to CDN if local file fails
+          loadHtml2CanvasFromCDN().then(resolve).catch(reject);
+        }
+      }, 100);
+    };
+    
+    script.onerror = () => {
+      // Fallback to CDN if local file fails to load
+      loadHtml2CanvasFromCDN().then(resolve).catch(reject);
+    };
+    
+    document.head.appendChild(script);
+  });
+}
+
+// Fallback function to load html2canvas from CDN
+function loadHtml2CanvasFromCDN() {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    
+    script.onload = () => {
+      setTimeout(() => {
+        if (window.html2canvas && typeof window.html2canvas === 'function') {
+          resolve(window.html2canvas);
+        } else {
+          reject(new Error('html2canvas failed to load from CDN'));
+        }
+      }, 100);
+    };
+    
+    script.onerror = () => reject(new Error('Failed to load html2canvas from CDN'));
     document.head.appendChild(script);
   });
 }
@@ -483,6 +521,11 @@ async function captureMeasurementScreenshot() {
       html2canvasLoaded = true;
     }
     
+    // Verify html2canvas is available
+    if (!window.html2canvas || typeof window.html2canvas !== 'function') {
+      throw new Error('html2canvas not available');
+    }
+    
     // Calculate bounds to include both elements and measurement
     const rect1 = firstElement.getBoundingClientRect();
     const rect2 = secondElement.getBoundingClientRect();
@@ -503,6 +546,8 @@ async function captureMeasurementScreenshot() {
       height: maxY - minY + (padding * 2)
     };
     
+    console.log('Capturing screenshot with area:', captureArea);
+    
     // Use html2canvas to capture the area
     const canvas = await window.html2canvas(document.body, {
       x: captureArea.x,
@@ -511,7 +556,8 @@ async function captureMeasurementScreenshot() {
       height: captureArea.height,
       useCORS: true,
       allowTaint: true,
-      backgroundColor: null
+      backgroundColor: null,
+      logging: false
     });
     
     // Convert to blob and download
@@ -530,6 +576,6 @@ async function captureMeasurementScreenshot() {
     
   } catch (error) {
     console.error('Screenshot capture failed:', error);
-    showToast('Screenshot failed', 'error');
+    showToast('Screenshot failed: ' + error.message, 'error');
   }
 } 
