@@ -159,8 +159,8 @@ function handleKeyDown(event) {
     return;
   }
   
-  // Ctrl+P - take screenshot of measurement
-  if (event.ctrlKey && event.key === 'p') {
+  // Shift key - take screenshot of measurement
+  if (event.key === 'Shift') {
     event.preventDefault();
     if (firstElement && secondElement && currentMeasurement) {
       captureMeasurementScreenshot();
