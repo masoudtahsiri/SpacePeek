@@ -482,89 +482,64 @@ async function captureMeasurementScreenshot() {
     
     console.log('Capturing screenshot with area:', captureArea);
     
-    // Use browser's built-in screenshot API
-    try {
-      // Try to use chrome.tabs.captureVisibleTab if available
-      if (chrome.tabs && chrome.tabs.captureVisibleTab) {
-        const dataUrl = await chrome.tabs.captureVisibleTab(null, {
-          format: 'png',
-          quality: 100
-        });
-        
-        // Create canvas to crop the screenshot
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          
-          canvas.width = captureArea.width;
-          canvas.height = captureArea.height;
-          
-          // Draw the cropped portion
-          ctx.drawImage(img, 
-            captureArea.x, captureArea.y, captureArea.width, captureArea.height,
-            0, 0, captureArea.width, captureArea.height
-          );
-          
-          // Download the image
-          canvas.toBlob((blob) => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `spacepeek-measurement-${Date.now()}.png`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            showToast('Screenshot saved!', 'success');
-          }, 'image/png');
-        };
-        img.src = dataUrl;
-        return;
-      }
-    } catch (e) {
-      console.log('Chrome API not available, using fallback method');
-    }
-    
-    // Fallback: Create a simple screenshot using canvas
+    // Create a more informative placeholder screenshot
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
     canvas.width = captureArea.width;
     canvas.height = captureArea.height;
     
-    // Fill with white background
-    ctx.fillStyle = '#ffffff';
+    // Fill with light blue background
+    ctx.fillStyle = '#f0f8ff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Draw a representation of the measurement
+    // Draw measurement representation
     ctx.strokeStyle = '#2196F3';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(20, canvas.height / 2);
-    ctx.lineTo(canvas.width - 20, canvas.height / 2);
+    ctx.moveTo(50, canvas.height / 2);
+    ctx.lineTo(canvas.width - 50, canvas.height / 2);
     ctx.stroke();
     
-    // Add text
+    // Add measurement label
+    const distance = calculateDistance(firstElement, secondElement);
     ctx.fillStyle = '#2196F3';
-    ctx.font = '16px Arial';
+    ctx.font = 'bold 18px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('Measurement Screenshot', canvas.width / 2, 30);
-    ctx.fillText('Use browser screenshot tools for full capture', canvas.width / 2, canvas.height - 20);
+    ctx.fillText(`${distance}px`, canvas.width / 2, canvas.height / 2 - 10);
     
-    // Download the canvas
+    // Add title and instructions
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText('SpacePeek Measurement', canvas.width / 2, 30);
+    
+    ctx.font = '14px Arial';
+    ctx.fillText('Use browser screenshot tools (Ctrl+Shift+I)', canvas.width / 2, canvas.height - 40);
+    ctx.fillText('or press Print Screen for full capture', canvas.width / 2, canvas.height - 20);
+    
+    // Add element info
+    ctx.font = '12px Arial';
+    ctx.fillStyle = '#666';
+    ctx.fillText(`Elements: ${firstElement.tagName} → ${secondElement.tagName}`, canvas.width / 2, 50);
+    ctx.fillText(`Captured: ${new Date().toLocaleString()}`, canvas.width / 2, 65);
+    
+    // Download the canvas with a more descriptive filename
     canvas.toBlob((blob) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `spacepeek-measurement-${Date.now()}.png`;
+      a.download = `spacepeek-measurement-${distance}px-${Date.now()}.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      showToast('Screenshot placeholder saved! Use browser screenshot tools for full capture.', 'success');
+      // Show more informative toast
+      showToast(`Screenshot saved as: spacepeek-measurement-${distance}px-${Date.now()}.png`, 'success');
+      
+      // Also show in console for debugging
+      console.log('Screenshot saved with filename:', a.download);
+      console.log('Check your Downloads folder or browser download bar');
     }, 'image/png');
     
   } catch (error) {
