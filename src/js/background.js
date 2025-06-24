@@ -34,4 +34,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true; // Keep message channel open for async response
   }
+
+  // Handle screenshot request
+  if (request.action === 'captureVisibleTab') {
+    chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: 'png' }, (dataUrl) => {
+      sendResponse({ dataUrl });
+    });
+    return true; // Keep message channel open for async response
+  }
 }); 

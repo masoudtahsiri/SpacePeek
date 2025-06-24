@@ -457,285 +457,88 @@ function showToast(message, type) {
   }, 2000);
 }
 
-// Capture screenshot of measurement area
+// Capture screenshot of measurement area using Chrome's captureVisibleTab
 async function captureMeasurementScreenshot() {
   try {
     // Calculate bounds to include both elements and measurement
     const rect1 = firstElement.getBoundingClientRect();
     const rect2 = secondElement.getBoundingClientRect();
     const measurementRect = currentMeasurement.getBoundingClientRect();
-    
+
     // Find the bounding box that includes all elements
     const minX = Math.min(rect1.left, rect2.left, measurementRect.left);
     const minY = Math.min(rect1.top, rect2.top, measurementRect.top);
     const maxX = Math.max(rect1.right, rect2.right, measurementRect.right);
     const maxY = Math.max(rect1.bottom, rect2.bottom, measurementRect.bottom);
-    
+
     // Add some padding around the measurement
-    const padding = 50;
+    const padding = 20;
     const captureArea = {
-      x: Math.max(0, minX - padding),
-      y: Math.max(0, minY - padding),
-      width: maxX - minX + (padding * 2),
-      height: maxY - minY + (padding * 2)
+      x: Math.max(0, Math.floor(minX - padding)),
+      y: Math.max(0, Math.floor(minY - padding)),
+      width: Math.ceil(maxX - minX + (padding * 2)),
+      height: Math.ceil(maxY - minY + (padding * 2))
     };
-    
-    console.log('Capturing screenshot with area:', captureArea);
-    
-    // Try to use html2canvas for real screenshot
-    try {
-      // Load html2canvas dynamically
-      const script = document.createElement('script');
-      script.src = chrome.runtime.getURL('js/html2canvas.min.js');
-      script.onload = async () => {
-        try {
-          // Create a container for the screenshot area
-          const container = document.createElement('div');
-          container.style.cssText = `
-            position: fixed;
-            left: ${captureArea.x}px;
-            top: ${captureArea.y}px;
-            width: ${captureArea.width}px;
-            height: ${captureArea.height}px;
-            overflow: hidden;
-            z-index: -1;
-            pointer-events: none;
-          `;
-          document.body.appendChild(container);
-          
-          // Use html2canvas to capture the viewport
-          const canvas = await html2canvas(document.body, {
-            x: captureArea.x,
-            y: captureArea.y,
-            width: captureArea.width,
-            height: captureArea.height,
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: null,
-            scale: 1,
-            logging: false
-          });
-          
-          // Remove the container
-          document.body.removeChild(container);
-          
-          // Convert to data URL
-          const dataUrl = canvas.toDataURL('image/png');
-          const distance = calculateDistance(firstElement, secondElement);
-          const filename = `spacepeek-measurement-${distance}px-${Date.now()}.png`;
-          
-          // Show in console for manual copy
-          console.log('=== SPACEPEEK SCREENSHOT ===');
-          console.log('Filename:', filename);
-          console.log('Measurement:', `${distance}px between ${firstElement.tagName} and ${secondElement.tagName}`);
-          console.log('Image data URL (copy this):');
-          console.log(dataUrl);
-          console.log('=== END SCREENSHOT ===');
-          
-          // Create download link
-          const link = document.createElement('a');
-          link.href = dataUrl;
-          link.download = filename;
-          link.textContent = 'Download Screenshot';
-          link.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #2196F3;
-            color: white;
-            padding: 15px 30px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-family: Arial, sans-serif;
-            font-weight: bold;
-            z-index: 2147483647;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-          `;
-          
-          link.onclick = () => {
-            setTimeout(() => {
-              document.body.removeChild(link);
-            }, 1000);
-          };
-          
-          document.body.appendChild(link);
-          showToast('Real screenshot captured! Click the blue download button', 'success');
-          
-        } catch (html2canvasError) {
-          console.error('html2canvas failed:', html2canvasError);
-          fallbackScreenshot();
-        }
+
+    // Request screenshot from background script
+    chrome.runtime.sendMessage({ action: 'captureVisibleTab' }, async (response) => {
+      if (!response || !response.dataUrl) {
+        showToast('Screenshot failed: No image data', 'error');
+        return;
+      }
+      // Create an image from the captured data
+      const img = new window.Image();
+      img.onload = function() {
+        // Create a canvas to crop the screenshot
+        const canvas = document.createElement('canvas');
+        canvas.width = captureArea.width;
+        canvas.height = captureArea.height;
+        const ctx = canvas.getContext('2d');
+        // Draw the cropped area
+        ctx.drawImage(
+          img,
+          captureArea.x, captureArea.y, captureArea.width, captureArea.height, // source
+          0, 0, captureArea.width, captureArea.height // destination
+        );
+        // Prepare download
+        const croppedDataUrl = canvas.toDataURL('image/png');
+        const distance = calculateDistance(firstElement, secondElement);
+        const filename = `spacepeek-measurement-${distance}px-${Date.now()}.png`;
+        // Show download button
+        const link = document.createElement('a');
+        link.href = croppedDataUrl;
+        link.download = filename;
+        link.textContent = 'Download Screenshot';
+        link.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: #2196F3;
+          color: white;
+          padding: 15px 30px;
+          border-radius: 8px;
+          text-decoration: none;
+          font-family: Arial, sans-serif;
+          font-weight: bold;
+          z-index: 2147483647;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        `;
+        link.onclick = () => {
+          setTimeout(() => {
+            document.body.removeChild(link);
+          }, 1000);
+        };
+        document.body.appendChild(link);
+        showToast('Screenshot ready! Click the blue download button', 'success');
       };
-      
-      script.onerror = () => {
-        console.error('Failed to load html2canvas');
-        fallbackScreenshot();
+      img.onerror = function() {
+        showToast('Screenshot failed: Could not load image', 'error');
       };
-      
-      document.head.appendChild(script);
-      
-    } catch (error) {
-      console.error('html2canvas setup failed:', error);
-      fallbackScreenshot();
-    }
-    
+      img.src = response.dataUrl;
+    });
   } catch (error) {
     console.error('Screenshot capture failed:', error);
-    showToast('Screenshot failed: ' + error.message, 'error');
-  }
-}
-
-// Fallback screenshot method
-function fallbackScreenshot() {
-  try {
-    // Calculate bounds
-    const rect1 = firstElement.getBoundingClientRect();
-    const rect2 = secondElement.getBoundingClientRect();
-    const measurementRect = currentMeasurement.getBoundingClientRect();
-    
-    const minX = Math.min(rect1.left, rect2.left, measurementRect.left);
-    const minY = Math.min(rect1.top, rect2.top, measurementRect.top);
-    const maxX = Math.max(rect1.right, rect2.right, measurementRect.right);
-    const maxY = Math.max(rect1.bottom, rect2.bottom, measurementRect.bottom);
-    
-    const padding = 50;
-    const captureArea = {
-      x: Math.max(0, minX - padding),
-      y: Math.max(0, minY - padding),
-      width: maxX - minX + (padding * 2),
-      height: maxY - minY + (padding * 2)
-    };
-    
-    // Create canvas with actual page content
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    canvas.width = captureArea.width;
-    canvas.height = captureArea.height;
-    
-    // Try to capture using drawWindow (Firefox) or similar methods
-    try {
-      // For Chrome, we'll create a representation
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Draw element representations
-      const element1Rect = {
-        x: rect1.left - captureArea.x,
-        y: rect1.top - captureArea.y,
-        width: rect1.width,
-        height: rect1.height
-      };
-      
-      const element2Rect = {
-        x: rect2.left - captureArea.x,
-        y: rect2.top - captureArea.y,
-        width: rect2.width,
-        height: rect2.height
-      };
-      
-      // Draw first element
-      ctx.strokeStyle = '#2196F3';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(element1Rect.x, element1Rect.y, element1Rect.width, element1Rect.height);
-      
-      // Draw second element
-      ctx.strokeRect(element2Rect.x, element2Rect.y, element2Rect.width, element2Rect.height);
-      
-      // Draw measurement line
-      const startX = element1Rect.x + element1Rect.width / 2;
-      const startY = element1Rect.y + element1Rect.height / 2;
-      const endX = element2Rect.x + element2Rect.width / 2;
-      const endY = element2Rect.y + element2Rect.height / 2;
-      
-      ctx.strokeStyle = '#FF5722';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(startX, startY);
-      ctx.lineTo(endX, endY);
-      ctx.stroke();
-      
-      // Add measurement label
-      const distance = calculateDistance(firstElement, secondElement);
-      const midX = (startX + endX) / 2;
-      const midY = (startY + endY) / 2;
-      
-      ctx.fillStyle = '#FF5722';
-      ctx.font = 'bold 16px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${distance}px`, midX, midY - 10);
-      
-      // Add title
-      ctx.fillStyle = '#333';
-      ctx.font = 'bold 18px Arial';
-      ctx.fillText('SpacePeek Measurement', canvas.width / 2, 30);
-      
-      ctx.font = '14px Arial';
-      ctx.fillText('Elements highlighted with measurement line', canvas.width / 2, canvas.height - 20);
-      
-      // Add element info
-      ctx.font = '12px Arial';
-      ctx.fillStyle = '#666';
-      ctx.fillText(`${firstElement.tagName} → ${secondElement.tagName}`, canvas.width / 2, 50);
-      ctx.fillText(`Captured: ${new Date().toLocaleString()}`, canvas.width / 2, 65);
-      
-    } catch (drawError) {
-      console.error('Drawing failed:', drawError);
-      // Simple fallback
-      ctx.fillStyle = '#f0f8ff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#333';
-      ctx.font = '16px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('Screenshot capture failed', canvas.width / 2, canvas.height / 2);
-    }
-    
-    // Convert to data URL
-    const dataUrl = canvas.toDataURL('image/png');
-    const distance = calculateDistance(firstElement, secondElement);
-    const filename = `spacepeek-measurement-${distance}px-${Date.now()}.png`;
-    
-    // Show in console
-    console.log('=== SPACEPEEK SCREENSHOT (Fallback) ===');
-    console.log('Filename:', filename);
-    console.log('Measurement:', `${distance}px between ${firstElement.tagName} and ${secondElement.tagName}`);
-    console.log('Image data URL (copy this):');
-    console.log(dataUrl);
-    console.log('=== END SCREENSHOT ===');
-    
-    // Create download link
-    const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = filename;
-    link.textContent = 'Download Screenshot';
-    link.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: #2196F3;
-      color: white;
-      padding: 15px 30px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-family: Arial, sans-serif;
-      font-weight: bold;
-      z-index: 2147483647;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    `;
-    
-    link.onclick = () => {
-      setTimeout(() => {
-        document.body.removeChild(link);
-      }, 1000);
-    };
-    
-    document.body.appendChild(link);
-    showToast('Fallback screenshot created - click the blue download button', 'success');
-    
-  } catch (error) {
-    console.error('Fallback screenshot failed:', error);
     showToast('Screenshot failed: ' + error.message, 'error');
   }
 } 
