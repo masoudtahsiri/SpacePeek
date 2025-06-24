@@ -1,57 +1,3 @@
-// Load html2canvas library for screenshot functionality
-function loadHtml2Canvas() {
-  return new Promise((resolve, reject) => {
-    if (window.html2canvas && typeof window.html2canvas === 'function') {
-      resolve(window.html2canvas);
-      return;
-    }
-    
-    // Try local file first
-    const script = document.createElement('script');
-    script.src = chrome.runtime.getURL('js/html2canvas.min.js');
-    
-    script.onload = () => {
-      // Wait a bit for the script to initialize
-      setTimeout(() => {
-        if (window.html2canvas && typeof window.html2canvas === 'function') {
-          resolve(window.html2canvas);
-        } else {
-          // Fallback to CDN if local file fails
-          loadHtml2CanvasFromCDN().then(resolve).catch(reject);
-        }
-      }, 100);
-    };
-    
-    script.onerror = () => {
-      // Fallback to CDN if local file fails to load
-      loadHtml2CanvasFromCDN().then(resolve).catch(reject);
-    };
-    
-    document.head.appendChild(script);
-  });
-}
-
-// Fallback function to load html2canvas from CDN
-function loadHtml2CanvasFromCDN() {
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-    
-    script.onload = () => {
-      setTimeout(() => {
-        if (window.html2canvas && typeof window.html2canvas === 'function') {
-          resolve(window.html2canvas);
-        } else {
-          reject(new Error('html2canvas failed to load from CDN'));
-        }
-      }, 100);
-    };
-    
-    script.onerror = () => reject(new Error('Failed to load html2canvas from CDN'));
-    document.head.appendChild(script);
-  });
-}
-
 // State management
 let isActive = false;
 let firstElement = null;
@@ -60,7 +6,6 @@ let currentMeasurement = null;
 let dimensionTooltip = null;
 let clearTimer = null;
 let cachedImageDimensions = new Map(); // Cache for image dimensions
-let html2canvasLoaded = false;
 
 // Event listeners
 let clickHandler = null;
@@ -515,17 +460,6 @@ function showToast(message, type) {
 // Capture screenshot of measurement area
 async function captureMeasurementScreenshot() {
   try {
-    // Load html2canvas if not already loaded
-    if (!html2canvasLoaded) {
-      await loadHtml2Canvas();
-      html2canvasLoaded = true;
-    }
-    
-    // Verify html2canvas is available
-    if (!window.html2canvas || typeof window.html2canvas !== 'function') {
-      throw new Error('html2canvas not available');
-    }
-    
     // Calculate bounds to include both elements and measurement
     const rect1 = firstElement.getBoundingClientRect();
     const rect2 = secondElement.getBoundingClientRect();
@@ -548,19 +482,78 @@ async function captureMeasurementScreenshot() {
     
     console.log('Capturing screenshot with area:', captureArea);
     
-    // Use html2canvas to capture the area
-    const canvas = await window.html2canvas(document.body, {
-      x: captureArea.x,
-      y: captureArea.y,
-      width: captureArea.width,
-      height: captureArea.height,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: null,
-      logging: false
-    });
+    // Use browser's built-in screenshot API
+    try {
+      // Try to use chrome.tabs.captureVisibleTab if available
+      if (chrome.tabs && chrome.tabs.captureVisibleTab) {
+        const dataUrl = await chrome.tabs.captureVisibleTab(null, {
+          format: 'png',
+          quality: 100
+        });
+        
+        // Create canvas to crop the screenshot
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          canvas.width = captureArea.width;
+          canvas.height = captureArea.height;
+          
+          // Draw the cropped portion
+          ctx.drawImage(img, 
+            captureArea.x, captureArea.y, captureArea.width, captureArea.height,
+            0, 0, captureArea.width, captureArea.height
+          );
+          
+          // Download the image
+          canvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `spacepeek-measurement-${Date.now()}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('Screenshot saved!', 'success');
+          }, 'image/png');
+        };
+        img.src = dataUrl;
+        return;
+      }
+    } catch (e) {
+      console.log('Chrome API not available, using fallback method');
+    }
     
-    // Convert to blob and download
+    // Fallback: Create a simple screenshot using canvas
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = captureArea.width;
+    canvas.height = captureArea.height;
+    
+    // Fill with white background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw a representation of the measurement
+    ctx.strokeStyle = '#2196F3';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(20, canvas.height / 2);
+    ctx.lineTo(canvas.width - 20, canvas.height / 2);
+    ctx.stroke();
+    
+    // Add text
+    ctx.fillStyle = '#2196F3';
+    ctx.font = '16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Measurement Screenshot', canvas.width / 2, 30);
+    ctx.fillText('Use browser screenshot tools for full capture', canvas.width / 2, canvas.height - 20);
+    
+    // Download the canvas
     canvas.toBlob((blob) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -571,7 +564,7 @@ async function captureMeasurementScreenshot() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      showToast('Screenshot saved!', 'success');
+      showToast('Screenshot placeholder saved! Use browser screenshot tools for full capture.', 'success');
     }, 'image/png');
     
   } catch (error) {
