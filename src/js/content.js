@@ -5,7 +5,7 @@ let secondElement = null;
 let currentMeasurement = null;
 let dimensionTooltip = null;
 let clearTimer = null;
-let isAltPressed = false;
+let cachedImageDimensions = new Map(); // Cache for image dimensions
 
 // Event listeners
 let clickHandler = null;
@@ -71,7 +71,6 @@ function disableMeasurement() {
   // Reset state
   firstElement = null;
   secondElement = null;
-  isAltPressed = false;
 }
 
 // Handle clicks for distance measurement
@@ -124,25 +123,17 @@ function handleKeyDown(event) {
     secondElement = null;
     return;
   }
-  
-  // Alt/Option key for dimension display
-  if (event.key === 'Alt' && !isAltPressed) {
-    isAltPressed = true;
-  }
 }
 
 function handleKeyUp(event) {
   if (!isActive) return;
   
-  if (event.key === 'Alt' && isAltPressed) {
-    isAltPressed = false;
-    hideDimensionTooltip();
-  }
+  // No need to handle Alt key anymore
 }
 
 // Handle mouse movement for dimension display
 function handleMouseMove(event) {
-  if (!isActive || !isAltPressed) {
+  if (!isActive) {
     hideDimensionTooltip();
     return;
   }
@@ -156,8 +147,69 @@ function handleMouseMove(event) {
     hideDimensionTooltip();
     return;
   }
+
+  // For images, always find the actual image element
+  let targetElement = null;
+  const imgElement = element.closest('img');
   
-  createDimensionTooltip(element, event);
+  if (imgElement) {
+    targetElement = imgElement;
+  } else if (element.tagName === 'IMG') {
+    targetElement = element;
+  }
+
+  // Only show dimensions for images and buttons
+  const isImage = targetElement && targetElement.tagName === 'IMG';
+  const isButton = element.tagName === 'BUTTON' || 
+                  (element.tagName === 'INPUT' && (element.type === 'button' || element.type === 'submit'));
+
+  if (isImage || isButton) {
+    // For images, show both rendered and intrinsic sizes
+    if (isImage) {
+      // Create a unique key for this image
+      const imageKey = targetElement.src + '_' + targetElement.className;
+      
+      // Check if we have cached dimensions for this image
+      let cachedDimensions = cachedImageDimensions.get(imageKey);
+      
+      if (!cachedDimensions) {
+        // Calculate and cache dimensions
+        const rect = targetElement.getBoundingClientRect();
+        const intrinsicWidth = targetElement.naturalWidth || 0;
+        const intrinsicHeight = targetElement.naturalHeight || 0;
+        
+        cachedDimensions = {
+          renderedWidth: Math.round(rect.width),
+          renderedHeight: Math.round(rect.height),
+          intrinsicWidth: intrinsicWidth,
+          intrinsicHeight: intrinsicHeight,
+          timestamp: Date.now()
+        };
+        
+        cachedImageDimensions.set(imageKey, cachedDimensions);
+        
+        console.log('Cached new image dimensions:', {
+          imageKey: imageKey,
+          dimensions: cachedDimensions
+        });
+      }
+      
+      if (!dimensionTooltip) {
+        dimensionTooltip = document.createElement('div');
+        dimensionTooltip.className = 'peekspace-dimension-tooltip';
+        document.body.appendChild(dimensionTooltip);
+      }
+      
+      dimensionTooltip.innerHTML = `Rendered size: ${cachedDimensions.renderedWidth} × ${cachedDimensions.renderedHeight} px<br>Intrinsic size: ${cachedDimensions.intrinsicWidth} × ${cachedDimensions.intrinsicHeight} px`;
+      dimensionTooltip.style.left = `${event.clientX + 10}px`;
+      dimensionTooltip.style.top = `${event.clientY - 30}px`;
+      dimensionTooltip.style.display = 'block';
+    } else {
+      createDimensionTooltip(element, event);
+    }
+  } else {
+    hideDimensionTooltip();
+  }
 }
 
 // Calculate distance between two elements
