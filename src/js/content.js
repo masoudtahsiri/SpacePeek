@@ -514,8 +514,8 @@ async function captureMeasurementScreenshot() {
     ctx.fillText('SpacePeek Measurement', canvas.width / 2, 30);
     
     ctx.font = '14px Arial';
-    ctx.fillText('Use browser screenshot tools (Ctrl+Shift+I)', canvas.width / 2, canvas.height - 40);
-    ctx.fillText('or press Print Screen for full capture', canvas.width / 2, canvas.height - 20);
+    ctx.fillText('Right-click image below and select "Save image as..."', canvas.width / 2, canvas.height - 40);
+    ctx.fillText('or use browser screenshot tools for full capture', canvas.width / 2, canvas.height - 20);
     
     // Add element info
     ctx.font = '12px Arial';
@@ -523,85 +523,99 @@ async function captureMeasurementScreenshot() {
     ctx.fillText(`Elements: ${firstElement.tagName} → ${secondElement.tagName}`, canvas.width / 2, 50);
     ctx.fillText(`Captured: ${new Date().toLocaleString()}`, canvas.width / 2, 65);
     
-    // Try multiple download methods
+    // Convert to data URL and open in new tab
+    const dataUrl = canvas.toDataURL('image/png');
     const filename = `spacepeek-measurement-${distance}px-${Date.now()}.png`;
     
-    // Method 1: Try canvas.toBlob with download
-    try {
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          throw new Error('Failed to create blob');
-        }
-        
-        console.log('Blob created successfully, size:', blob.size);
-        
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        
-        // Trigger download
-        a.click();
-        
-        // Cleanup
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 100);
-        
-        console.log('Download triggered for:', filename);
-        showToast(`Screenshot saved: ${filename}`, 'success');
-        
-      }, 'image/png', 1.0);
-    } catch (error) {
-      console.error('Method 1 failed:', error);
-      
-      // Method 2: Try data URL approach
-      try {
-        const dataUrl = canvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        a.href = dataUrl;
-        a.download = filename;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        
-        a.click();
-        
-        setTimeout(() => {
-          document.body.removeChild(a);
-        }, 100);
-        
-        console.log('Download triggered via data URL for:', filename);
-        showToast(`Screenshot saved: ${filename}`, 'success');
-        
-      } catch (error2) {
-        console.error('Method 2 failed:', error2);
-        
-        // Method 3: Open in new tab
-        try {
-          const dataUrl = canvas.toDataURL('image/png');
-          const newWindow = window.open();
-          newWindow.document.write(`
-            <html>
-              <head><title>SpacePeek Screenshot</title></head>
-              <body style="margin:0;padding:20px;background:#f0f0f0;">
-                <h3>Screenshot saved as: ${filename}</h3>
-                <p>Right-click the image below and select "Save image as..."</p>
-                <img src="${dataUrl}" style="border:1px solid #ccc;max-width:100%;" />
-              </body>
-            </html>
-          `);
-          
-          showToast('Screenshot opened in new tab - right-click to save', 'success');
-          
-        } catch (error3) {
-          console.error('All download methods failed:', error3);
-          showToast('Screenshot failed - try browser screenshot tools', 'error');
-        }
-      }
-    }
+    // Open in new tab with save instructions
+    const newWindow = window.open('', '_blank');
+    newWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>SpacePeek Screenshot - ${filename}</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 0; 
+              padding: 20px; 
+              background: #f5f5f5; 
+              text-align: center;
+            }
+            .container {
+              background: white;
+              padding: 30px;
+              border-radius: 10px;
+              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+              max-width: 800px;
+              margin: 0 auto;
+            }
+            h1 { color: #2196F3; margin-bottom: 10px; }
+            .instructions { 
+              background: #e3f2fd; 
+              padding: 15px; 
+              border-radius: 5px; 
+              margin: 20px 0;
+              border-left: 4px solid #2196F3;
+            }
+            img { 
+              border: 2px solid #ddd; 
+              border-radius: 5px;
+              max-width: 100%; 
+              margin: 20px 0;
+            }
+            .download-btn {
+              background: #2196F3;
+              color: white;
+              padding: 12px 24px;
+              border: none;
+              border-radius: 5px;
+              cursor: pointer;
+              font-size: 16px;
+              margin: 10px;
+            }
+            .download-btn:hover {
+              background: #1976D2;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>📸 SpacePeek Screenshot</h1>
+            <p><strong>Filename:</strong> ${filename}</p>
+            <p><strong>Measurement:</strong> ${distance}px between ${firstElement.tagName} and ${secondElement.tagName}</p>
+            
+            <div class="instructions">
+              <h3>How to save this screenshot:</h3>
+              <p><strong>Method 1:</strong> Right-click the image below and select "Save image as..."</p>
+              <p><strong>Method 2:</strong> Click the download button below</p>
+              <p><strong>Method 3:</strong> Use browser screenshot tools (Ctrl+Shift+I) for full page capture</p>
+            </div>
+            
+            <img src="${dataUrl}" alt="SpacePeek Measurement" />
+            
+            <br>
+            <button class="download-btn" onclick="downloadImage()">Download Screenshot</button>
+            <button class="download-btn" onclick="window.print()">Print Screenshot</button>
+            
+            <script>
+              function downloadImage() {
+                const link = document.createElement('a');
+                link.href = '${dataUrl}';
+                link.download = '${filename}';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }
+            </script>
+          </div>
+        </body>
+      </html>
+    `);
+    newWindow.document.close();
+    
+    console.log('Screenshot opened in new tab:', filename);
+    showToast('Screenshot opened in new tab - right-click to save', 'success');
     
   } catch (error) {
     console.error('Screenshot capture failed:', error);
