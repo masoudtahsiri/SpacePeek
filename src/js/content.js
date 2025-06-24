@@ -460,6 +460,8 @@ function showToast(message, type) {
 // Capture screenshot of measurement area using Chrome's captureVisibleTab
 async function captureMeasurementScreenshot() {
   try {
+    console.log('[SpacePeek] Screenshot process started');
+    showToast('Starting screenshot...', 'info');
     // Calculate bounds to include both elements and measurement
     const rect1 = firstElement.getBoundingClientRect();
     const rect2 = secondElement.getBoundingClientRect();
@@ -479,16 +481,20 @@ async function captureMeasurementScreenshot() {
       width: Math.ceil(maxX - minX + (padding * 2)),
       height: Math.ceil(maxY - minY + (padding * 2))
     };
+    console.log('[SpacePeek] Calculated capture area:', captureArea);
 
     // Request screenshot from background script
     chrome.runtime.sendMessage({ action: 'captureVisibleTab' }, async (response) => {
+      console.log('[SpacePeek] Received response from background:', response);
       if (!response || !response.dataUrl) {
         showToast('Screenshot failed: No image data', 'error');
+        console.error('[SpacePeek] Screenshot failed: No image data');
         return;
       }
       // Create an image from the captured data
       const img = new window.Image();
       img.onload = function() {
+        console.log('[SpacePeek] Image loaded, cropping...');
         // Create a canvas to crop the screenshot
         const canvas = document.createElement('canvas');
         canvas.width = captureArea.width;
@@ -535,14 +541,16 @@ async function captureMeasurementScreenshot() {
         // Automatically trigger download
         link.click();
         showToast('Screenshot downloaded! (Blue button is a backup)', 'success');
+        console.log('[SpacePeek] Screenshot download triggered');
       };
       img.onerror = function() {
         showToast('Screenshot failed: Could not load image', 'error');
+        console.error('[SpacePeek] Screenshot failed: Could not load image');
       };
       img.src = response.dataUrl;
     });
   } catch (error) {
-    console.error('Screenshot capture failed:', error);
+    console.error('[SpacePeek] Screenshot capture failed:', error);
     showToast('Screenshot failed: ' + error.message, 'error');
   }
 } 
