@@ -79,8 +79,8 @@ function handleClick(event) {
   
   // Ignore clicks on measurement overlays
   if (event.target.closest('.peekspace-measurement') || 
-      event.target.classList.contains('peekspace-measurement-line') ||
-      event.target.classList.contains('peekspace-measurement-label')) {
+      event.target.closest('.peekspace-measurement-line') ||
+      event.target.closest('.peekspace-measurement-label')) {
     return;
   }
   
@@ -88,6 +88,24 @@ function handleClick(event) {
   event.stopPropagation();
   
   const clickedElement = event.target;
+  
+  // Check if clicking on the same element that's already selected
+  if (firstElement === clickedElement) {
+    // Unselect first element
+    clearMeasurements();
+    clearHighlights();
+    firstElement = null;
+    secondElement = null;
+    return;
+  }
+  
+  if (secondElement === clickedElement) {
+    // Unselect second element
+    clearMeasurements();
+    secondElement.classList.remove('peekspace-highlight');
+    secondElement = null;
+    return;
+  }
   
   if (!firstElement) {
     // First click - select first element
