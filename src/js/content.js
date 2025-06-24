@@ -1,3 +1,19 @@
+// Load html2canvas library for screenshot functionality
+function loadHtml2Canvas() {
+  return new Promise((resolve, reject) => {
+    if (window.html2canvas) {
+      resolve(window.html2canvas);
+      return;
+    }
+    
+    const script = document.createElement('script');
+    script.src = chrome.runtime.getURL('js/html2canvas.min.js');
+    script.onload = () => resolve(window.html2canvas);
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
 // State management
 let isActive = false;
 let firstElement = null;
@@ -6,6 +22,7 @@ let currentMeasurement = null;
 let dimensionTooltip = null;
 let clearTimer = null;
 let cachedImageDimensions = new Map(); // Cache for image dimensions
+let html2canvasLoaded = false;
 
 // Event listeners
 let clickHandler = null;
@@ -139,6 +156,15 @@ function handleKeyDown(event) {
     clearHighlights();
     firstElement = null;
     secondElement = null;
+    return;
+  }
+  
+  // Ctrl+P - take screenshot of measurement
+  if (event.ctrlKey && event.key === 'p') {
+    event.preventDefault();
+    if (firstElement && secondElement && currentMeasurement) {
+      captureMeasurementScreenshot();
+    }
     return;
   }
 }
@@ -446,4 +472,64 @@ function showToast(message, type) {
       }
     }, 300);
   }, 2000);
+}
+
+// Capture screenshot of measurement area
+async function captureMeasurementScreenshot() {
+  try {
+    // Load html2canvas if not already loaded
+    if (!html2canvasLoaded) {
+      await loadHtml2Canvas();
+      html2canvasLoaded = true;
+    }
+    
+    // Calculate bounds to include both elements and measurement
+    const rect1 = firstElement.getBoundingClientRect();
+    const rect2 = secondElement.getBoundingClientRect();
+    const measurementRect = currentMeasurement.getBoundingClientRect();
+    
+    // Find the bounding box that includes all elements
+    const minX = Math.min(rect1.left, rect2.left, measurementRect.left);
+    const minY = Math.min(rect1.top, rect2.top, measurementRect.top);
+    const maxX = Math.max(rect1.right, rect2.right, measurementRect.right);
+    const maxY = Math.max(rect1.bottom, rect2.bottom, measurementRect.bottom);
+    
+    // Add some padding around the measurement
+    const padding = 20;
+    const captureArea = {
+      x: Math.max(0, minX - padding),
+      y: Math.max(0, minY - padding),
+      width: maxX - minX + (padding * 2),
+      height: maxY - minY + (padding * 2)
+    };
+    
+    // Use html2canvas to capture the area
+    const canvas = await window.html2canvas(document.body, {
+      x: captureArea.x,
+      y: captureArea.y,
+      width: captureArea.width,
+      height: captureArea.height,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: null
+    });
+    
+    // Convert to blob and download
+    canvas.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `spacepeek-measurement-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      showToast('Screenshot saved!', 'success');
+    }, 'image/png');
+    
+  } catch (error) {
+    console.error('Screenshot capture failed:', error);
+    showToast('Screenshot failed', 'error');
+  }
 } 
