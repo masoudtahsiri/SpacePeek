@@ -3,9 +3,10 @@
   "name": "SpacePeek",
   "version": "1.0.0",
   "description": "Measure distances between elements and inspect dimensions on any webpage",
-  "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "permissions": ["activeTab", "scripting", "storage", "tabs", "downloads"],
   "host_permissions": ["<all_urls>"],
   "action": {
+    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

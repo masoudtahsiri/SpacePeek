@@ -1,26 +1,3 @@
-// Handle extension icon clicks
-chrome.action.onClicked.addListener(async (tab) => {
-  // Get current state
-  const result = await chrome.storage.local.get(`tab_${tab.id}`);
-  const isActive = result[`tab_${tab.id}`] || false;
-  
-  // Toggle state
-  const newState = !isActive;
-  await chrome.storage.local.set({ [`tab_${tab.id}`]: newState });
-  
-  // Icon state will be managed by the default icon in manifest.json
-  // Dynamic icon changes removed to prevent fetch errors
-  
-  // Send message to content script
-  try {
-    chrome.tabs.sendMessage(tab.id, {
-      action: newState ? 'enable' : 'disable'
-    });
-  } catch (e) {
-    console.log('Failed to send message to content script:', e);
-  }
-});
-
 // Clean up when tab closes
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   await chrome.storage.local.remove(`tab_${tabId}`);
@@ -35,10 +12,63 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Keep message channel open for async response
   }
 
+  if (request.action === 'test') {
+    sendResponse({ success: true, message: 'Background script is working' });
+    return true;
+  }
+
   // Handle screenshot request
-  if (request.action === 'captureVisibleTab') {
-    chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: 'png' }, (dataUrl) => {
-      sendResponse({ dataUrl });
+  if (request.action === 'captureScreenshot') {
+    // Get settings for screenshot format
+    chrome.storage.local.get('spacepeek_settings', (result) => {
+      const settings = result.spacepeek_settings || { screenshotFormat: 'png' };
+      const format = settings.screenshotFormat || 'png';
+      
+      // Check if we can capture this tab
+      chrome.tabs.get(sender.tab.id, (tab) => {
+        if (chrome.runtime.lastError) {
+          console.error('Tab access error:', chrome.runtime.lastError);
+          sendResponse({ error: 'Cannot access tab: ' + chrome.runtime.lastError.message });
+          return;
+        }
+        
+        // Check if tab URL is allowed for screenshots
+        if (tab.url && (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://'))) {
+          console.error('Cannot capture screenshot of chrome:// or chrome-extension:// pages');
+          sendResponse({ error: 'Cannot capture screenshots of browser pages' });
+          return;
+        }
+        
+        chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: format }, (dataUrl) => {
+          if (chrome.runtime.lastError) {
+            console.error('Screenshot error:', chrome.runtime.lastError);
+            sendResponse({ error: chrome.runtime.lastError.message });
+          } else if (!dataUrl) {
+            console.error('Screenshot returned no data');
+            sendResponse({ error: 'Screenshot failed - no data received' });
+          } else {
+            // Try to save using downloads API as fallback
+            try {
+              const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+              const filename = `spacepeek-screenshot-${timestamp}.${format}`;
+              
+              chrome.downloads.download({
+                url: dataUrl,
+                filename: filename,
+                saveAs: false
+              }, (downloadId) => {
+                if (chrome.runtime.lastError) {
+                  sendResponse({ dataUrl, format });
+                } else {
+                  sendResponse({ success: true, downloadId, format });
+                }
+              });
+            } catch (error) {
+              sendResponse({ dataUrl, format });
+            }
+          }
+        });
+      });
     });
     return true; // Keep message channel open for async response
   }

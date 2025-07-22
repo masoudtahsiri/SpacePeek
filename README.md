@@ -86,6 +86,12 @@ A Chrome Extension that measures distances between elements and shows element di
 
 2. **Release Alt/Option** to hide the tooltip
 
+### Keyboard Shortcuts
+
+- **S** - Take a screenshot of the current view
+- **ESC** - Clear current measurements
+- **Alt/Option + Hover** - Show element dimensions
+
 ## 🛠️ Technical Details
 
 ### File Structure

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpacePeek Keyboard Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .key-info {
+            background: #e8f4fd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .highlight {
+            background: yellow;
+            padding: 5px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>SpacePeek Keyboard Shortcut Test</h1>
+    
+    <div class="test-section">
+        <h2>Instructions</h2>
+        <ol>
+            <li>Open the SpacePeek popup and set the screenshot key to 'b'</li>
+            <li>Enable SpacePeek</li>
+            <li>Press 'b' - should take a screenshot</li>
+            <li>Press 's' - should NOT take a screenshot</li>
+            <li>Check the browser console for debug information</li>
+        </ol>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Elements</h2>
+        <p>Click on these elements to test measurements:</p>
+        <button id="btn1">Button 1</button>
+        <button id="btn2">Button 2</button>
+        <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzMzMyIvPjwvc3ZnPg==" alt="Test Image" style="width: 100px; height: 100px; border: 2px solid #333;">
+        <div class="highlight">Highlighted div</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Debug Information</h2>
+        <div id="debug-info">
+            <p>Press any key to see debug information here...</p>
+        </div>
+    </div>
+    
+    <script>
+        // Add a global key listener to see all key events
+        document.addEventListener('keydown', function(event) {
+            const debugInfo = document.getElementById('debug-info');
+            debugInfo.innerHTML = `
+                <div class="key-info">
+                    <strong>Key pressed:</strong> ${event.key}<br>
+                    <strong>Key code:</strong> ${event.code}<br>
+                    <strong>Key code (legacy):</strong> ${event.keyCode}<br>
+                    <strong>Which:</strong> ${event.which}<br>
+                    <strong>Modifiers:</strong> Ctrl: ${event.ctrlKey}, Shift: ${event.shiftKey}, Alt: ${event.altKey}, Meta: ${event.metaKey}<br>
+                    <strong>Target:</strong> ${event.target.tagName}<br>
+                    <strong>Timestamp:</strong> ${new Date().toISOString()}
+                </div>
+            `;
+        });
+        
+        // Also log to console
+        document.addEventListener('keydown', function(event) {
+            console.log('=== GLOBAL KEY EVENT ===');
+            console.log('Key:', event.key);
+            console.log('Code:', event.code);
+            console.log('Target:', event.target);
+            console.log('Event:', event);
+        });
+    </script>
+</body>
+</html> 

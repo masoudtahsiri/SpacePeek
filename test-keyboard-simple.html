@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Keyboard Test - SpacePeek</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2196F3;
+            margin-bottom: 10px;
+        }
+        
+        .test-area {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #2196F3;
+            text-align: center;
+        }
+        
+        .key-display {
+            font-size: 48px;
+            font-weight: bold;
+            color: #2196F3;
+            margin: 20px 0;
+            padding: 20px;
+            background: #e3f2fd;
+            border-radius: 12px;
+            border: 3px dashed #2196F3;
+        }
+        
+        .instructions {
+            background: #fff3cd;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        .status.active {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        
+        .status.inactive {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            background: #1976D2;
+            transform: translateY(-2px);
+        }
+        
+        .console-output {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Simple Keyboard Test</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Test SpacePeek keyboard functionality
+        </p>
+        
+        <div class="instructions">
+            <h3>Quick Test Steps:</h3>
+            <ol>
+                <li>Enable SpacePeek by clicking the extension icon</li>
+                <li>Set screenshot key to "y" in settings</li>
+                <li>Click in the test area below</li>
+                <li>Press "y" to test screenshot</li>
+                <li>Check console and output below</li>
+            </ol>
+        </div>
+        
+        <div class="test-area">
+            <h3>Test Area</h3>
+            <p>Click here and press keys to test:</p>
+            <div class="key-display" id="keyDisplay" tabindex="0">
+                Press a key...
+            </div>
+            <p><strong>Current Status:</strong></p>
+            <div id="status" class="status inactive">SpacePeek: Inactive</div>
+        </div>
+        
+        <div class="test-area">
+            <h3>Debug Tools</h3>
+            <button onclick="testSpacePeek()">Test SpacePeek</button>
+            <button onclick="showSettings()">Show Settings</button>
+            <button onclick="testKey('y')">Test 'y' Key</button>
+            <button onclick="testKey('S')">Test 'S' Key</button>
+            <button onclick="clearOutput()">Clear Output</button>
+        </div>
+        
+        <div class="test-area">
+            <h3>Console Output</h3>
+            <div id="consoleOutput" class="console-output">
+                Console output will appear here...
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let spacepeekActive = false;
+        let lastKeyPressed = '';
+        
+        // Capture console.log and display in our output
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        function addToOutput(message, type = 'log') {
+            const output = document.getElementById('consoleOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#d32f2f' : '#1976d2';
+            output.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToOutput(args.join(' '));
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToOutput(args.join(' '), 'error');
+        };
+        
+        function updateStatus() {
+            const statusDiv = document.getElementById('status');
+            if (spacepeekActive) {
+                statusDiv.textContent = 'SpacePeek: Active';
+                statusDiv.className = 'status active';
+            } else {
+                statusDiv.textContent = 'SpacePeek: Inactive';
+                statusDiv.className = 'status inactive';
+            }
+        }
+        
+        function updateKeyDisplay(key) {
+            const keyDisplay = document.getElementById('keyDisplay');
+            keyDisplay.textContent = `Key: "${key}"`;
+            lastKeyPressed = key;
+        }
+        
+        function testSpacePeek() {
+            console.log('=== Testing SpacePeek ===');
+            
+            spacepeekActive = document.body.classList.contains('peekspace-active');
+            updateStatus();
+            
+            console.log('SpacePeek active:', spacepeekActive);
+            
+            if (typeof chrome !== 'undefined' && chrome.runtime) {
+                console.log('✅ Chrome runtime available');
+                
+                chrome.runtime.sendMessage({ action: 'test' }, (response) => {
+                    if (response && response.success) {
+                        console.log('✅ Background script is working');
+                    } else {
+                        console.log('❌ Background script not responding');
+                    }
+                });
+            } else {
+                console.log('❌ Chrome runtime not available');
+            }
+        }
+        
+        function showSettings() {
+            console.log('=== Showing Settings ===');
+            
+            if (typeof chrome !== 'undefined' && chrome.storage) {
+                chrome.storage.local.get('spacepeek_settings', (result) => {
+                    console.log('Stored settings:', result);
+                    
+                    if (result.spacepeek_settings) {
+                        const settings = result.spacepeek_settings;
+                        console.log('Screenshot key:', settings.screenshotKey);
+                        console.log('Clear key:', settings.clearKey);
+                        console.log('Screenshot format:', settings.screenshotFormat);
+                    } else {
+                        console.log('No settings found in storage');
+                    }
+                });
+            } else {
+                console.log('❌ Chrome storage not available');
+            }
+        }
+        
+        function testKey(key) {
+            console.log(`=== Testing Key: ${key} ===`);
+            
+            // Create a keydown event
+            const event = new KeyboardEvent('keydown', {
+                key: key,
+                code: `Key${key.toUpperCase()}`,
+                keyCode: key.charCodeAt(0),
+                which: key.charCodeAt(0),
+                bubbles: true,
+                cancelable: true
+            });
+            
+            console.log('Dispatching keydown event for:', key);
+            document.dispatchEvent(event);
+        }
+        
+        function clearOutput() {
+            document.getElementById('consoleOutput').innerHTML = 'Console output cleared...';
+        }
+        
+        // Monitor for SpacePeek activation
+        function checkSpacePeekStatus() {
+            const wasActive = spacepeekActive;
+            spacepeekActive = document.body.classList.contains('peekspace-active');
+            
+            if (wasActive !== spacepeekActive) {
+                console.log('SpacePeek status changed:', spacepeekActive ? 'Active' : 'Inactive');
+                updateStatus();
+                
+                if (spacepeekActive) {
+                    console.log('SpacePeek is now active - try pressing your screenshot key');
+                }
+            }
+        }
+        
+        // Check status every second
+        setInterval(checkSpacePeekStatus, 1000);
+        
+        // Listen for key events on the test area
+        document.querySelector('.key-display').addEventListener('keydown', (e) => {
+            updateKeyDisplay(e.key);
+            console.log('Key pressed in test area:', e.key);
+            console.log('Event details:', {
+                key: e.key,
+                code: e.code,
+                keyCode: e.keyCode,
+                which: e.which
+            });
+        });
+        
+        // Focus the test area when clicked
+        document.querySelector('.key-display').addEventListener('click', function() {
+            this.focus();
+            console.log('Test area focused - ready for key input');
+        });
+        
+        // Auto-run test when page loads
+        window.addEventListener('load', () => {
+            console.log('=== SpacePeek Simple Keyboard Test Page Loaded ===');
+            console.log('Enable SpacePeek and set screenshot key to test');
+            testSpacePeek();
+        });
+    </script>
+</body>
+</html> 

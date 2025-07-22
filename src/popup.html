@@ -2,124 +2,625 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SpacePeek</title>
+  <link rel="stylesheet" href="css/content.css">
   <style>
-    body {
+    html, body {
       width: 300px;
-      padding: 20px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      /* height: 340px; */
       margin: 0;
-      background: #f8f9fa;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #1a1a1a;
+      overflow: hidden;
+    }
+    
+    .popup-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.1),
+        0 2px 8px rgba(0, 0, 0, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      margin: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .popup-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
     }
     
     .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px 20px 16px 20px;
       text-align: center;
-      margin-bottom: 20px;
+      border-radius: 20px 20px 0 0;
+      position: relative;
+      overflow: hidden;
     }
     
-    .logo {
-      width: 48px;
-      height: 48px;
-      margin: 0 auto 10px;
-      background: linear-gradient(135deg, #2196F3, #1976D2);
-      border-radius: 12px;
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      animation: shimmer 3s ease-in-out infinite;
+    }
+    
+    @keyframes shimmer {
+      0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+      50% { transform: translate(-50%, -50%) rotate(180deg); }
+    }
+    
+    .header .logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      margin-bottom: 10px;
+      background: rgba(255,255,255,0.95);
+      display: inline-block;
+      object-fit: contain;
+      border: 2px solid rgba(255,255,255,0.3);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease;
+    }
+    
+    .header .logo:hover {
+      transform: scale(1.05) rotate(5deg);
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      color: white;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .header .subtitle {
+      font-size: 13px;
+      color: rgba(255,255,255,0.9);
+      margin-top: 3px;
+      font-weight: 400;
+      opacity: 0.95;
+    }
+    
+    .container {
+      padding: 16px;
+    }
+    
+    .popup-button {
+      width: 100%;
+      padding: 14px 18px;
+      border: none;
+      background: rgba(255,255,255,0.9);
+      color: #1a1a1a;
+      text-align: center;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 16px;
+      margin-bottom: 14px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+      outline: none;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+      box-shadow: 
+        0 4px 16px rgba(0,0,0,0.1),
+        0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .popup-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transition: left 0.5s ease;
+    }
+    
+    .popup-button:hover::before {
+      left: 100%;
+    }
+    
+    .popup-button.primary {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #ffffff;
+      box-shadow: 
+        0 8px 24px rgba(16,185,129,0.3),
+        0 4px 8px rgba(16,185,129,0.2);
+    }
+    
+    .popup-button.primary:hover {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 
+        0 12px 32px rgba(16,185,129,0.4),
+        0 6px 12px rgba(16,185,129,0.3);
+    }
+    
+    .popup-button.danger {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: #ffffff;
+      box-shadow: 
+        0 8px 24px rgba(239,68,68,0.3),
+        0 4px 8px rgba(239,68,68,0.2);
+    }
+    
+    .popup-button.danger:hover {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 
+        0 12px 32px rgba(239,68,68,0.4),
+        0 6px 12px rgba(239,68,68,0.3);
+    }
+    
+    .popup-button:focus {
+      outline: 3px solid rgba(102,126,234,0.5);
+      outline-offset: 2px;
+    }
+    
+    .icon {
+      width: 18px;
+      height: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
-      font-size: 24px;
-      font-weight: bold;
+      flex-shrink: 0;
+      transition: transform 0.2s ease;
     }
     
-    h1 {
-      margin: 0;
-      font-size: 18px;
-      color: #333;
-      font-weight: 600;
+    .popup-button:hover .icon {
+      transform: scale(1.1);
     }
     
-    .subtitle {
-      color: #666;
-      font-size: 14px;
-      margin: 5px 0 0 0;
-    }
-    
-    .notice {
-      background: #fff3cd;
-      border: 1px solid #ffeaa7;
-      border-radius: 8px;
-      padding: 15px;
-      margin: 20px 0;
-      color: #856404;
-      font-size: 14px;
-      line-height: 1.4;
-    }
-    
-    .notice strong {
-      display: block;
-      margin-bottom: 5px;
-    }
-    
-    .instructions {
-      background: white;
-      border-radius: 8px;
-      padding: 15px;
-      margin: 15px 0;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-    
-    .instructions h3 {
-      margin: 0 0 10px 0;
-      font-size: 14px;
-      color: #333;
-      font-weight: 600;
-    }
-    
-    .instructions ul {
-      margin: 0;
-      padding-left: 18px;
+    .settings-btn {
+      width: 100%;
+      margin-bottom: 14px;
+      padding: 12px 18px;
+      border-radius: 16px;
       font-size: 13px;
-      color: #555;
-      line-height: 1.4;
+      background: rgba(248,249,250,0.8);
+      color: #6c757d;
+      border: 1px solid rgba(233,236,239,0.8);
+      cursor: pointer;
+      opacity: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      position: relative;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     
-    .instructions li {
-      margin-bottom: 5px;
+    .settings-btn:hover {
+      background: rgba(248,249,250,0.9);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .shortcuts {
+      background: linear-gradient(135deg, rgba(248,249,250,0.9) 0%, rgba(241,243,244,0.9) 100%);
+      border-radius: 16px;
+      padding: 16px;
+      margin: 0 0 14px 0;
+      border: 1px solid rgba(233,236,239,0.8);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .shortcuts::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(102,126,234,0.3), transparent);
+    }
+    
+    .shortcuts h3 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 12px;
+      color: #667eea;
+      text-shadow: 0 1px 2px rgba(102,126,234,0.1);
+    }
+    
+    .shortcut {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 6px 10px;
+      background: rgba(255,255,255,0.6);
+      border-radius: 10px;
+      font-size: 12px;
+      color: #495057;
+      transition: all 0.2s ease;
+      border: 1px solid rgba(233,236,239,0.5);
+    }
+    
+    .shortcut:hover {
+      background: rgba(255,255,255,0.8);
+      transform: translateX(2px);
+    }
+    
+    .shortcut:last-child { margin-bottom: 0; }
+    
+    .key {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #ffffff;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      border: none;
+      min-width: 32px;
+      text-align: center;
+      margin-left: 10px;
+      box-shadow: 0 2px 8px rgba(102,126,234,0.3);
+      transition: all 0.2s ease;
+    }
+    
+    .key:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(102,126,234,0.4);
     }
     
     .footer {
       text-align: center;
-      margin-top: 20px;
+      font-size: 11px;
+      color: #6c757d;
+      margin: 16px 0 0 0;
+      padding: 0 16px 16px 16px;
+      opacity: 0.8;
+    }
+    
+    .footer a {
+      color: #667eea;
+      text-decoration: none;
+      margin-left: 4px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      font-size: 11px;
+      position: relative;
+    }
+    
+    .footer a::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 1px;
+      background: #667eea;
+      transition: width 0.2s ease;
+    }
+    
+    .footer a:hover::after {
+      width: 100%;
+    }
+    
+    .footer a:hover {
+      color: #5a6fd8;
+    }
+    
+    /* Settings Panel Styles */
+    .settings-panel {
+      display: none;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.1),
+        0 2px 8px rgba(0, 0, 0, 0.05);
+      margin: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .settings-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px 20px 16px 20px;
+      text-align: center;
+      border-radius: 20px 20px 0 0;
+      position: relative;
+    }
+    
+    .settings-header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      color: white;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .settings-content {
+      padding: 16px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .setting-group {
+      margin-bottom: 20px;
+      padding: 16px;
+      background: rgba(248,249,250,0.8);
+      border-radius: 12px;
+      border: 1px solid rgba(233,236,239,0.8);
+    }
+    
+    .setting-group h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #495057;
+      margin: 0 0 12px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding: 8px 0;
+    }
+    
+    .setting-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .setting-label {
       font-size: 12px;
-      color: #999;
+      color: #495057;
+      font-weight: 500;
+    }
+    
+    .setting-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .toggle-switch {
+      position: relative;
+      width: 40px;
+      height: 20px;
+      background: #e9ecef;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    
+    .toggle-switch.active {
+      background: #10b981;
+    }
+    
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .toggle-switch.active::after {
+      transform: translateX(20px);
+    }
+    
+    .select-control {
+      padding: 6px 10px;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 11px;
+      background: white;
+      color: #495057;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .select-control:hover {
+      border-color: #667eea;
+      box-shadow: 0 2px 4px rgba(102,126,234,0.1);
+    }
+    
+    .color-picker {
+      width: 30px;
+      height: 30px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .color-picker:hover {
+      transform: scale(1.05);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .back-btn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(10px);
+    }
+    
+    .back-btn:hover {
+      background: rgba(255,255,255,0.3);
+      transform: scale(1.05);
+    }
+    
+    .shortcut-input {
+      padding: 6px 10px;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 11px;
+      background: white;
+      color: #495057;
+      width: 80px;
+      text-align: center;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    }
+    
+    .shortcut-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 2px rgba(102,126,234,0.1);
     }
   </style>
 </head>
 <body>
-  <div class="header">
-    <div class="logo">📏</div>
-    <h1>SpacePeek</h1>
-    <p class="subtitle">Web Measurement Tool</p>
+  <!-- Main Popup -->
+  <div class="popup-card" id="mainPopup">
+    <div class="header">
+      <img src="icons/icon128.png" alt="SpacePeek logo" class="logo" aria-hidden="true" />
+      <h1>SpacePeek</h1>
+      <div class="subtitle">Web Measurement Tool</div>
+    </div>
+    <div class="container">
+      <button id="toggle" class="popup-button primary" aria-pressed="false">
+        <span class="icon" id="toggleIcon"></span>
+        <span id="toggleText">Enable</span>
+      </button>
+      <button id="settings" class="settings-btn">
+        <span class="icon">⚙️</span>
+        Settings & Preferences
+      </button>
+      <div class="shortcuts" aria-label="Keyboard Shortcuts">
+        <h3>Keyboard Shortcuts</h3>
+        <div class="shortcut"><span>Take Screenshot</span><span class="key">S</span></div>
+        <div class="shortcut"><span>Clear Measurements</span><span class="key">ESC</span></div>
+        <div class="shortcut"><span>Show Dimensions (images/buttons)</span><span class="key">Hover</span></div>
+      </div>
+    </div>
   </div>
   
-  <div class="notice">
-    <strong>Restricted Site</strong>
-    SpacePeek cannot run on this page due to browser security restrictions.
-  </div>
-  
-  <div class="instructions">
-    <h3>How to use SpacePeek:</h3>
-    <ul>
-      <li>Click the extension icon to toggle measurement mode</li>
-      <li>Click two elements to measure distance between them</li>
-      <li>Hold Alt/Option + hover to see element dimensions</li>
-      <li>Press ESC to clear measurements</li>
-    </ul>
+  <!-- Settings Panel -->
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-header">
+      <button class="back-btn" id="backBtn">←</button>
+      <h1>Settings</h1>
+    </div>
+    <div class="settings-content">
+      <!-- Measurement Settings -->
+      <div class="setting-group">
+        <h3>Measurement Units</h3>
+        <div class="setting-item">
+          <span class="setting-label">Units</span>
+          <div class="setting-control">
+            <select class="select-control" id="unitsSelect">
+              <option value="px">Pixels (px)</option>
+              <option value="rem">Root EM (rem)</option>
+              <option value="em">EM (em)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Visual Settings -->
+      <div class="setting-group">
+        <h3>Visual Settings</h3>
+        <div class="setting-item">
+          <span class="setting-label">Grid Overlay</span>
+          <div class="setting-control">
+            <div class="toggle-switch" id="gridToggle"></div>
+          </div>
+        </div>
+        <div class="setting-item">
+          <span class="setting-label">Line Color</span>
+          <div class="setting-control">
+            <input type="color" class="color-picker" id="lineColor" value="#667eea">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Screenshot Settings -->
+      <div class="setting-group">
+        <h3>Screenshot Settings</h3>
+        <div class="setting-item">
+          <span class="setting-label">Format</span>
+          <div class="setting-control">
+            <select class="select-control" id="screenshotFormat">
+              <option value="png">PNG</option>
+              <option value="jpeg">JPEG</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Keyboard Shortcuts -->
+      <div class="setting-group">
+        <h3>Keyboard Shortcuts</h3>
+        <div class="setting-item">
+          <span class="setting-label">Screenshot Key</span>
+          <div class="setting-control">
+            <input type="text" class="shortcut-input" id="screenshotKey" value="S" readonly>
+          </div>
+        </div>
+        <div class="setting-item">
+          <span class="setting-label">Clear Key</span>
+          <div class="setting-control">
+            <input type="text" class="shortcut-input" id="clearKey" value="Escape" readonly>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
   
   <div class="footer">
-    Version 1.0.0
+    Version 1.0.0 • Made with <span aria-label="love">♥</span>
+    <a href="https://github.com/masoudtahsiri/spacepeek" target="_blank" rel="noopener noreferrer" aria-label="GitHub">GitHub</a>
   </div>
+  <script src="js/popup.js"></script>
 </body>
 </html> 

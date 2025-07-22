@@ -1,3 +1,10 @@
+// Check if content script is already running
+if (window.spacepeekInitialized) {
+  // Exit early to prevent multiple instances
+} else {
+  window.spacepeekInitialized = true;
+}
+
 // State management
 let isActive = false;
 let firstElement = null;
@@ -7,18 +14,45 @@ let dimensionTooltip = null;
 let clearTimer = null;
 let cachedImageDimensions = new Map(); // Cache for image dimensions
 
+// Settings management
+let settings = {
+  units: 'px',
+  gridOverlay: false,
+  lineColor: '#667eea',
+  screenshotFormat: 'png',
+  screenshotKey: 'S',
+  clearKey: 'Escape'
+};
+
 // Event listeners
 let clickHandler = null;
 let keyDownHandler = null;
 let keyUpHandler = null;
 let mouseMoveHandler = null;
 
-// Initialize - check state on load
-chrome.runtime.sendMessage({ action: 'getState' }, (response) => {
-  if (response && response.isActive) {
-    enableMeasurement();
+// Initialize - check state on load and load settings
+async function initialize() {
+  try {
+    // Load settings
+    const result = await chrome.storage.local.get('spacepeek_settings');
+    if (result.spacepeek_settings) {
+      settings = { ...settings, ...result.spacepeek_settings };
+    }
+    
+    // Check if active
+    chrome.runtime.sendMessage({ action: 'getState' }, (response) => {
+      if (response && response.isActive) {
+        enableMeasurement();
+      }
+    });
+    
+  } catch (error) {
+    console.error('Failed to initialize SpacePeek:', error);
   }
-});
+}
+
+// Initialize on load
+initialize();
 
 // Listen for messages from background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -28,6 +62,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === 'disable') {
     disableMeasurement();
     showToast('SpacePeek OFF', 'off');
+  } else if (request.action === 'updateSettings') {
+    updateSettings(request.settings);
+  } else if (request.action === 'ping') {
+    // Respond to ping to confirm content script is available
+    sendResponse({ available: true });
   }
 });
 
@@ -48,6 +87,14 @@ function enableMeasurement() {
   document.addEventListener('keydown', keyDownHandler, true);
   document.addEventListener('keyup', keyUpHandler, true);
   document.addEventListener('mousemove', mouseMoveHandler, true);
+  
+  // Create grid overlay if enabled
+  if (settings.gridOverlay) {
+    createGridOverlay();
+  }
+  
+  // Show a brief message
+  showToast('SpacePeek ON', 'on');
 }
 
 // Disable measurement mode
@@ -67,6 +114,12 @@ function disableMeasurement() {
   clearMeasurements();
   clearHighlights();
   hideDimensionTooltip();
+  
+  // Remove grid overlay
+  const grid = document.getElementById('peekspace-grid');
+  if (grid) {
+    grid.remove();
+  }
   
   // Reset state
   firstElement = null;
@@ -102,7 +155,11 @@ function handleClick(event) {
   if (secondElement === clickedElement) {
     // Unselect second element
     clearMeasurements();
+    // Remove highlight from second element
     secondElement.classList.remove('peekspace-highlight');
+    secondElement.style.removeProperty('outline-color');
+    secondElement.style.removeProperty('background-color');
+    secondElement.style.removeProperty('--highlight-color');
     secondElement = null;
     return;
   }
@@ -131,10 +188,19 @@ function handleClick(event) {
 
 // Handle key events
 function handleKeyDown(event) {
-  if (!isActive) return;
+  if (!isActive) {
+    return;
+  }
   
-  // ESC key - clear measurements
-  if (event.key === 'Escape') {
+  // Get the pressed key (handle special cases)
+  const pressedKey = event.key;
+  
+  // Detailed key comparison
+  const screenshotMatch = pressedKey === settings.screenshotKey;
+  const clearMatch = pressedKey === settings.clearKey;
+  
+  // Clear key - clear measurements
+  if (clearMatch) {
     clearMeasurements();
     clearHighlights();
     firstElement = null;
@@ -142,12 +208,18 @@ function handleKeyDown(event) {
     return;
   }
   
-  // Shift key - take screenshot of measurement
-  if (event.key === 'Shift') {
+  // Screenshot key - take screenshot
+  if (screenshotMatch) {
     event.preventDefault();
-    if (firstElement && secondElement && currentMeasurement) {
-      captureMeasurementScreenshot();
-    }
+    event.stopPropagation();
+    takeScreenshot();
+    return;
+  }
+  
+  // Debug key - show settings (Ctrl+Shift+D)
+  if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+    event.preventDefault();
+    debugScreenshotSettings();
     return;
   }
 }
@@ -355,11 +427,13 @@ function drawMeasurement(elem1, elem2, distance) {
   line.style.left = `${point1.x}px`;
   line.style.top = `${point1.y}px`;
   line.style.transform = `rotate(${angle}rad)`;
+  line.style.backgroundColor = settings.lineColor || '#667eea';
   
   // Create label
   const label = document.createElement('div');
   label.className = 'peekspace-measurement-label';
-  label.textContent = `${distance}px`;
+  label.textContent = formatDistance(distance);
+  label.dataset.distance = distance; // Store original distance for unit conversion
   label.style.left = `${(point1.x + point2.x) / 2}px`;
   label.style.top = `${(point1.y + point2.y) / 2}px`;
   
@@ -382,12 +456,26 @@ function drawMeasurement(elem1, elem2, distance) {
 // Highlight element
 function highlightElement(element) {
   element.classList.add('peekspace-highlight');
+  
+  // Apply custom highlight color to match line color
+  const lineColor = settings.lineColor || '#667eea';
+  element.style.outlineColor = lineColor;
+  element.style.backgroundColor = `${lineColor}15`; // 15% opacity
+  
+  // Update the ::after pseudo-element color using CSS custom property
+  element.style.setProperty('--highlight-color', lineColor);
 }
 
 // Clear all highlights
 function clearHighlights() {
   const highlighted = document.querySelectorAll('.peekspace-highlight');
-  highlighted.forEach(el => el.classList.remove('peekspace-highlight'));
+  highlighted.forEach(el => {
+    el.classList.remove('peekspace-highlight');
+    // Remove inline styles that were added
+    el.style.removeProperty('outline-color');
+    el.style.removeProperty('background-color');
+    el.style.removeProperty('--highlight-color');
+  });
 }
 
 // Clear all measurements
@@ -415,7 +503,9 @@ function createDimensionTooltip(element, event) {
     document.body.appendChild(dimensionTooltip);
   }
   
-  dimensionTooltip.textContent = `${width} × ${height} px`;
+  const widthFormatted = formatDistance(width);
+  const heightFormatted = formatDistance(height);
+  dimensionTooltip.textContent = `${widthFormatted} × ${heightFormatted}`;
   dimensionTooltip.style.left = `${event.clientX + 10}px`;
   dimensionTooltip.style.top = `${event.clientY - 30}px`;
   dimensionTooltip.style.display = 'block';
@@ -457,100 +547,236 @@ function showToast(message, type) {
   }, 2000);
 }
 
-// Capture screenshot of measurement area using Chrome's captureVisibleTab
-async function captureMeasurementScreenshot() {
-  try {
-    console.log('[SpacePeek] Screenshot process started');
-    showToast('Starting screenshot...', 'info');
-    // Calculate bounds to include both elements and measurement
-    const rect1 = firstElement.getBoundingClientRect();
-    const rect2 = secondElement.getBoundingClientRect();
-    const measurementRect = currentMeasurement.getBoundingClientRect();
-
-    // Find the bounding box that includes all elements
-    const minX = Math.min(rect1.left, rect2.left, measurementRect.left);
-    const minY = Math.min(rect1.top, rect2.top, measurementRect.top);
-    const maxX = Math.max(rect1.right, rect2.right, measurementRect.right);
-    const maxY = Math.max(rect1.bottom, rect2.bottom, measurementRect.bottom);
-
-    // Add some padding around the measurement
-    const padding = 20;
-    const captureArea = {
-      x: Math.max(0, Math.floor(minX - padding)),
-      y: Math.max(0, Math.floor(minY - padding)),
-      width: Math.ceil(maxX - minX + (padding * 2)),
-      height: Math.ceil(maxY - minY + (padding * 2))
-    };
-    console.log('[SpacePeek] Calculated capture area:', captureArea);
-
-    // Request screenshot from background script
-    chrome.runtime.sendMessage({ action: 'captureVisibleTab' }, async (response) => {
-      console.log('[SpacePeek] Received response from background:', response);
-      if (!response || !response.dataUrl) {
-        showToast('Screenshot failed: No image data', 'error');
-        console.error('[SpacePeek] Screenshot failed: No image data');
-        return;
-      }
-      // Create an image from the captured data
-      const img = new window.Image();
-      img.onload = function() {
-        console.log('[SpacePeek] Image loaded, cropping...');
-        // Create a canvas to crop the screenshot
-        const canvas = document.createElement('canvas');
-        canvas.width = captureArea.width;
-        canvas.height = captureArea.height;
-        const ctx = canvas.getContext('2d');
-        // Draw the cropped area
-        ctx.drawImage(
-          img,
-          captureArea.x, captureArea.y, captureArea.width, captureArea.height, // source
-          0, 0, captureArea.width, captureArea.height // destination
-        );
-        // Prepare download
-        const croppedDataUrl = canvas.toDataURL('image/png');
-        const distance = calculateDistance(firstElement, secondElement);
-        const filename = `spacepeek-measurement-${distance}px-${Date.now()}.png`;
-        // Show download button
+// Add this new simplified screenshot function
+function takeScreenshot() {
+  // Show feedback
+  showToast('Taking screenshot...', 'success');
+  
+  // Check if chrome.runtime is available
+  if (typeof chrome === 'undefined' || !chrome.runtime) {
+    console.error('Chrome runtime not available');
+    showToast('Screenshot failed - extension not available', 'error');
+    return;
+  }
+  
+  // Request screenshot from background script
+  chrome.runtime.sendMessage({ action: 'captureScreenshot' }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error('Runtime error:', chrome.runtime.lastError);
+      showToast('Screenshot failed - ' + chrome.runtime.lastError.message, 'error');
+      return;
+    }
+    
+    if (response && response.error) {
+      console.error('Screenshot error:', response.error);
+      showToast('Screenshot failed - ' + response.error, 'error');
+      return;
+    }
+    
+    if (response && response.dataUrl) {
+      try {
+        // Create download link
         const link = document.createElement('a');
-        link.href = croppedDataUrl;
-        link.download = filename;
-        link.textContent = 'Download Screenshot';
-        link.style.cssText = `
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          background: #2196F3;
-          color: white;
-          padding: 15px 30px;
-          border-radius: 8px;
-          text-decoration: none;
-          font-family: Arial, sans-serif;
-          font-weight: bold;
-          z-index: 2147483647;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        `;
-        link.onclick = () => {
-          setTimeout(() => {
-            if (document.body.contains(link)) {
-              document.body.removeChild(link);
-            }
-          }, 1000);
-        };
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        const format = settings.screenshotFormat || 'png';
+        link.download = `spacepeek-screenshot-${timestamp}.${format}`;
+        link.href = response.dataUrl;
+        
+        // Trigger download
         document.body.appendChild(link);
-        // Automatically trigger download
         link.click();
-        showToast('Screenshot downloaded! (Blue button is a backup)', 'success');
-        console.log('[SpacePeek] Screenshot download triggered');
-      };
-      img.onerror = function() {
-        showToast('Screenshot failed: Could not load image', 'error');
-        console.error('[SpacePeek] Screenshot failed: Could not load image');
-      };
-      img.src = response.dataUrl;
+        document.body.removeChild(link);
+        
+        showToast('Screenshot saved!', 'success');
+      } catch (error) {
+        console.error('Download error:', error);
+        showToast('Screenshot failed - download error', 'error');
+      }
+    } else {
+      console.error('Screenshot failed - no data received');
+      showToast('Screenshot failed - no data received', 'error');
+    }
+  });
+}
+
+// Toggle settings panel
+function toggleSettingsPanel() {
+  showToast('Settings panel coming soon!', 'info');
+  // TODO: Implement settings panel functionality
+} 
+
+// Update settings
+function updateSettings(newSettings) {
+  settings = { ...settings, ...newSettings };
+  
+  // Update existing measurements with new settings
+  if (isActive) {
+    updateMeasurementDisplay();
+  }
+  
+  // Update grid overlay
+  updateGridOverlay();
+}
+
+// Update measurement display with current settings
+function updateMeasurementDisplay() {
+  const measurements = document.querySelectorAll('.peekspace-measurement');
+  
+  measurements.forEach(measurement => {
+    const label = measurement.querySelector('.peekspace-measurement-label');
+    if (label) {
+      // Get the original distance in pixels
+      let distance = parseFloat(label.dataset.distance);
+      
+      // If no dataset distance, try to parse from current text
+      if (isNaN(distance)) {
+        const currentText = label.textContent;
+        const pxMatch = currentText.match(/(\d+(?:\.\d+)?)px/);
+        if (pxMatch) {
+          distance = parseFloat(pxMatch[1]);
+          // Store it for future use
+          label.dataset.distance = distance;
+        }
+      }
+      
+      if (!isNaN(distance)) {
+        const formatted = formatDistance(distance);
+        label.textContent = formatted;
+      }
+    }
+    
+    // Update line color
+    const line = measurement.querySelector('.peekspace-measurement-line');
+    if (line) {
+      line.style.backgroundColor = settings.lineColor || '#667eea';
+    }
+  });
+  
+  // Update existing highlights
+  const highlights = document.querySelectorAll('.peekspace-highlight');
+  const lineColor = settings.lineColor || '#667eea';
+  highlights.forEach(highlight => {
+    highlight.style.outlineColor = lineColor;
+    highlight.style.backgroundColor = `${lineColor}15`;
+    highlight.style.setProperty('--highlight-color', lineColor);
+  });
+}
+
+// Update grid overlay
+function updateGridOverlay() {
+  const existingGrid = document.getElementById('peekspace-grid');
+  if (existingGrid) {
+    existingGrid.remove();
+  }
+  
+  if (settings.gridOverlay && isActive) {
+    createGridOverlay();
+  }
+}
+
+// Create grid overlay
+function createGridOverlay() {
+  const grid = document.createElement('div');
+  grid.id = 'peekspace-grid';
+  grid.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9998;
+    background-image: 
+      linear-gradient(rgba(102, 126, 234, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(102, 126, 234, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+  `;
+  document.body.appendChild(grid);
+}
+
+// Format distance based on units
+function formatDistance(distance) {
+  switch (settings.units) {
+    case 'rem':
+      const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
+      return `${(distance / rootFontSize).toFixed(2)}rem`;
+    case 'em':
+      const parentFontSize = parseFloat(getComputedStyle(document.body).fontSize);
+      return `${(distance / parentFontSize).toFixed(2)}em`;
+    default:
+      return `${Math.round(distance)}px`;
+  }
+}
+
+// Debug function to test screenshot settings
+function debugScreenshotSettings() {
+  console.log('=== Screenshot Settings Debug ===');
+  console.log('Current settings:', settings);
+  console.log('Screenshot key:', settings.screenshotKey);
+  console.log('Is active:', isActive);
+  
+  // Test if we can access chrome.runtime
+  if (typeof chrome !== 'undefined' && chrome.runtime) {
+    console.log('Chrome runtime available');
+  } else {
+    console.log('Chrome runtime not available');
+  }
+  
+  // Test if we can send messages
+  try {
+    chrome.runtime.sendMessage({ action: 'test' }, (response) => {
+      console.log('Message test response:', response);
     });
   } catch (error) {
-    console.error('[SpacePeek] Screenshot capture failed:', error);
-    showToast('Screenshot failed: ' + error.message, 'error');
+    console.error('Message test failed:', error);
   }
-} 
+  
+  // Show a test message
+  showToast('Debug mode activated', 'info');
+}
+
+// Manual test function - call this from console to test screenshot
+window.testSpacePeekScreenshot = function() {
+  console.log('=== Manual Screenshot Test ===');
+  console.log('Current settings:', settings);
+  console.log('Is active:', isActive);
+  console.log('Screenshot key:', settings.screenshotKey);
+  
+  if (!isActive) {
+    console.log('SpacePeek is not active - enabling it first');
+    enableMeasurement();
+  }
+  
+  takeScreenshot();
+};
+
+// Function to show current keyboard settings
+window.showSpacePeekSettings = function() {
+  console.log('=== SpacePeek Current Settings ===');
+  console.log('Screenshot Key:', settings.screenshotKey);
+  console.log('Clear Key:', settings.clearKey);
+  console.log('Is Active:', isActive);
+  console.log('All Settings:', settings);
+  
+  // Show a toast with current settings
+  showToast('Settings displayed in console', 'info');
+};
+
+// Function to test a specific key
+window.testKey = function(key) {
+  console.log(`=== Testing Key: ${key} ===`);
+  console.log('Current screenshot key:', settings.screenshotKey);
+  console.log('Key match:', key === settings.screenshotKey);
+  
+  // Create a test event
+  const event = new KeyboardEvent('keydown', {
+    key: key,
+    code: `Key${key.toUpperCase()}`,
+    keyCode: key.charCodeAt(0),
+    which: key.charCodeAt(0),
+    bubbles: true,
+    cancelable: true
+  });
+  
+  document.dispatchEvent(event);
+}; 
